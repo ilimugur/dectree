@@ -7,6 +7,7 @@ import argparse
 target_attribute = ""
 instances = []
 attributes = []
+tests = []
 
 epsilon = 0.0001
 output_file = "Output.dot"
@@ -44,7 +45,7 @@ def sort_by_appearance(instances, attribute = None):
             vals.append(val)
     return (vals, vals_seen)
 
-def print_node_data(node, node_id):
+def print_node_data(node, node_id, printHist):
     global epsilon
     if node.is_split_node():
         color_attr = 'red'
@@ -56,23 +57,37 @@ def print_node_data(node, node_id):
             color_attr = 'blue'
         label = 'Leaf'
 
+    num_instances = node.get_num_instances()
+
     s = '  ' + node_id + ' [shape=box, '
     s += 'color=' + color_attr + ', '
     s += 'label="' + label + '\\n'
     s += 'Entropy = ' + "{0:.4f}".format(node.get_entropy()) + '\\n'
-    s += 'Instances = ' + str(node.get_num_instances()) + '\\n'
-    s += 'Decision = ' + node.get_classification() + '"] ;\r\n'
+    s += 'Instances = ' + str(num_instances) + '\\n'
+    s += 'Decision = ' + node.get_classification()
+    if printHist and num_instances > 0:
+        s += '\\nHistogram:\\n'
+        s += ' | { {val|num|prob}'
+        for val, freq in node.get_frequencies():
+            prob_str = "{0:.4f}".format(float(freq) / num_instances)
+            s += ' |{' + str(val) + '|' + str(freq) + '|' + prob_str +'}'
+        #s += ' }'
+#        s += 'val\tnum\tprob\\n'
+#        for val, freq in node.get_frequencies():
+#            prob_str = "{0:.4f}".format(float(freq) / num_instances)
+#            s += str(val) + '\t' + str(freq) + '\t' + prob_str +'\\n'
+    s += '"] ;\r\n'
     return s
 
 def print_edge_data(u_id, v_id, node_label):
     return '  ' + u_id + ' -> ' + v_id +  ' [label="' + node_label + '"] ;\r\n'
 
-def postfix_traversal(root, node_id):
+def postfix_traversal(root, node_id, printHist):
     num_nodes = 1
     num_splits = 0
     max_depth = 0
 
-    s = print_node_data(root, node_id)
+    s = print_node_data(root, node_id, printHist)
     z = ''
 
     child_nodes = root.get_children_list()
@@ -80,10 +95,9 @@ def postfix_traversal(root, node_id):
         num_splits += 1
         for i in range(0, len(child_nodes)):
             attribute_val, child = child_nodes[i]
-            # TODO: What if an attribute has more than 9 values???
-            child_id = node_id + str(i+1)
+            child_id = node_id + "0" + str(i+1)
             s += print_edge_data(node_id, child_id, attribute_val)
-            nnodes, nsplits, mdepth, output = postfix_traversal(child, child_id)
+            nnodes, nsplits, mdepth, output = postfix_traversal(child, child_id, printHist)
             num_nodes += nnodes
             num_splits += nsplits
             max_depth = max(max_depth, mdepth + 1)
@@ -108,6 +122,7 @@ class Node:
     def __init__(self):
         self.attribute = None
         self.classification = None
+        self.frequencies = []
         self.children = []
         self.entropy = 0.0
         self.num_instances = 0
@@ -142,8 +157,21 @@ class Node:
     def add_child(self, node, attr_val):
         self.children.append( (attr_val, node) )
 
+    def get_child(self, attr_val):
+        for child in self.children:
+            if child[0] == attr_val:
+                return child[1]
+        return None
+
     def is_split_node(self):
         return self.attribute != None
+
+    def get_frequencies(self):
+        return self.frequencies
+
+    def set_frequencies(self, freq):
+        self.frequencies = freq
+
 
 def find_entropy(instances, class_list, class_index_dict):
     result = 0.0
@@ -189,11 +217,12 @@ def ID3(instances, target_attr, attributes):
 
     root = Node()
     root.set_entropy(find_entropy(instances, class_list, class_index_dict))
-    root.set_num_instances(len(instances))
+    num_instances = len(instances)
+    root.set_num_instances(num_instances)
+    frequencies = count_frequencies(instances, class_list, class_index_dict)
+    root.set_frequencies([(class_list[i], frequencies[i]) for i in range(0, len(frequencies))])
 
     most_frequent_class_index = 0
-    num_instances = len(instances)
-    frequencies = count_frequencies(instances, class_list, class_index_dict)
     for i in range(0, len(frequencies)):
         if frequencies[i] == num_instances:
             root.set_classification(class_list[i])
@@ -220,16 +249,36 @@ def ID3(instances, target_attr, attributes):
             node = ID3(subset, target_attr, new_attrs)
         else:
             node = Node()
-            node.set_entropy(0.0)
-            node.set_num_instances(0)
+            # Default/Initial values for entropy, frequencies and num_instances
+            # are valid for node, which is why they need not be set.
             node.set_classification(class_list[most_frequent_class_index])
         root.add_child(node, val)
     return root
 
+def run_tests(root):
+    global tests
+
+    f = open('log.txt', 'w')
+    if len(tests) > 0:
+        correct_guesses = 0
+        for test in tests:
+            node = root
+            while node.is_split_node():
+                node = node.get_child(test.get_attr_val(node.get_attribute()))
+            guess = node.get_classification()
+            if guess == test.get_classification():
+                correct_guesses += 1
+        accuracy = correct_guesses / float(len(tests))
+        f.write('Test Accuracy: ' + "{0:.4f}".format(accuracy))
+    else:
+        f.write('No test instances found.')
+    f.close()
+
 def read_input(input_file):
-    global instances, attributes, target_attribute
+    global instances, attributes, target_attribute, tests
     attr_list = []
     train_list = []
+    test_list = []
     with open(input_file) as f:
         for line in f:
             line = line.strip()
@@ -239,8 +288,7 @@ def read_input(input_file):
             elif line.startswith('A:'):
                 train_list.append(info)
             elif line.startswith('B:'):
-                # TODO: Implement
-                pass
+                test_list.append(info)
 
     target_attribute = attr_list[-1]
     attributes = attr_list[:-1]
@@ -249,9 +297,13 @@ def read_input(input_file):
         instance = Instance(train_example[-1], attributes, train_example[:-1])
         instances.append(instance)
 
-def print_output(root):
+    for test_example in test_list:
+        test = Instance(test_example[-1], attributes, test_example[:-1])
+        tests.append(test)
+
+def print_output(root, printHist = False):
     global output_file
-    nodes, splits, depth, details = postfix_traversal(root, "1")
+    nodes, splits, depth, details = postfix_traversal(root, "1", printHist)
 
     f = open(output_file, 'w')
     f.write("digraph G\r\n{\r\n  ")
@@ -262,15 +314,23 @@ def print_output(root):
     f.write("}\r\n")
     f.close()
 
+def print_output_with_histogram(root):
+    print_output(root, True)
+
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input', metavar='F', type=str, default="Input.txt",
                                  help='input file path')
+    parser.add_argument('--hist', dest='print_output', action='store_const',
+                                 const=print_output_with_histogram,
+                                 default=print_output,
+                                 help='print histogram for each node')
     args = parser.parse_args()
 
     read_input(args.input)
     root = ID3(instances, target_attribute, attributes)
-    print_output(root)
+    accuracy = run_tests(root)
+    args.print_output(root)
 
 if __name__ == '__main__':
     main()
