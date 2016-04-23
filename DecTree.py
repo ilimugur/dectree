@@ -269,9 +269,9 @@ def run_tests(root):
             if guess == test.get_classification():
                 correct_guesses += 1
         accuracy = correct_guesses / float(len(tests))
-        f.write('Test Accuracy: ' + "{0:.4f}".format(accuracy))
+        f.write('Test Accuracy: ' + "{0:.4f}".format(accuracy) + '\r\n')
     else:
-        f.write('No test instances found.')
+        f.write('No test instances found.\r\n')
     f.close()
 
 def read_input(input_file):
