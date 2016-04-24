@@ -58,24 +58,39 @@ def print_node_data(node, node_id, printHist):
         label = 'Leaf'
 
     num_instances = node.get_num_instances()
+    frequencies = node.get_frequencies()
+
+    longest_line_length = 0
+    histogram_vals = []
+    for val, freq in frequencies:
+        val_str = str(val)
+        freq_str = str(freq)
+        histogram_vals.append((val_str, freq_str))
+        line_len = len(val_str) + len(freq_str)
+        longest_line_length = max(longest_line_length, line_len)
 
     s = '  ' + node_id + ' [shape=box, '
     s += 'color=' + color_attr + ', '
-    s += 'label="' + label + '\\n'
-    s += 'Entropy = ' + "{0:.4f}".format(node.get_entropy()) + '\\n'
-    s += 'Instances = ' + str(num_instances) + '\\n'
-    s += 'Decision = ' + node.get_classification()
+    s += 'label="'
+    t = label + '\\n'
+    longest_line_length = max(longest_line_length, len(t))
+    s += t
+    t = 'Entropy = ' + "{0:.4f}".format(node.get_entropy()) + '\\n'
+    longest_line_length = max(longest_line_length, len(t))
+    s += t
+    t = 'Instances = ' + str(num_instances) + '\\n'
+    longest_line_length = max(longest_line_length, len(t))
+    s += t
+    t = 'Decision = ' + node.get_classification()
+    longest_line_length = max(longest_line_length, len(t))
+    s += t
     if printHist and num_instances > 0:
-        s += '\\nHistogram:\\n'
-        s += ' | { {val|num|prob}'
-        for val, freq in node.get_frequencies():
-            prob_str = "{0:.4f}".format(float(freq) / num_instances)
-            s += ' |{' + str(val) + '|' + str(freq) + '|' + prob_str +'}'
-        #s += ' }'
-#        s += 'val\tnum\tprob\\n'
-#        for val, freq in node.get_frequencies():
-#            prob_str = "{0:.4f}".format(float(freq) / num_instances)
-#            s += str(val) + '\t' + str(freq) + '\t' + prob_str +'\\n'
+        s += '\\nHISTOGRAM:\\n'
+        s += 'VAL' + (' ' * (longest_line_length - 11)) + 'FREQ\\n'
+
+        for val, freq in histogram_vals:
+            s += val + (' ' * (longest_line_length - (len(val) + len(freq))))
+            s += freq + '\\n'
     s += '"] ;\r\n'
     return s
 
@@ -264,7 +279,16 @@ def run_tests(root):
         for test in tests:
             node = root
             while node.is_split_node():
-                node = node.get_child(test.get_attr_val(node.get_attribute()))
+                attr = node.get_attribute()
+                val = test.get_attr_val(attr)
+                node = node.get_child(val)
+                if node == None:
+                    f.write('ERROR: Classification failed for test!\r\n')
+                    f.write('A subtree for value(' + val + ') of attribute(' + attr +') ')
+                    f.write('is not present in the decision tree.\r\n')
+                    break
+            if node == None:
+                continue
             guess = node.get_classification()
             if guess == test.get_classification():
                 correct_guesses += 1
