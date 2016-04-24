@@ -338,23 +338,21 @@ def print_output(root, printHist = False):
     f.write("}\r\n")
     f.close()
 
-def print_output_with_histogram(root):
-    print_output(root, True)
-
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input', metavar='F', type=str, default="Input.txt",
-                                 help='input file path')
-    parser.add_argument('--hist', dest='print_output', action='store_const',
-                                 const=print_output_with_histogram,
-                                 default=print_output,
-                                 help='print histogram for each node')
+                                 help='Input file path')
+    parser.add_argument('--disable-tests', action='store_false', default=True,
+                                 help='Flag to disable tests')
+    parser.add_argument('--hist', action='store_true', default=False,
+                                 help='Flag to print a textual histogram inside each node')
     args = parser.parse_args()
 
     read_input(args.input)
     root = ID3(instances, target_attribute, attributes)
-    accuracy = run_tests(root)
-    args.print_output(root)
+    if not args.disable_tests:
+        accuracy = run_tests(root)
+    print_output(root, args.hist)
 
 if __name__ == '__main__':
     main()
