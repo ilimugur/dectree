@@ -1,0 +1,37 @@
+% Auto-generated on Sat Mar 26 22:07:39 EET 2016
+
+%  'T:' Identifies the Attribute Title Line
+%  'A:' Identifies Training Set Examples
+%  'B:' Identifies Test Set Examples
+
+T: Author, Thread, Length, Where Read, User Action;
+
+A: known, new, long, home, skips;
+A: unknown, new, short, work, reads;
+A: unknown, follow_up, long, work, skips;
+A: known, follow_up, long, home, skips;
+A: known, new, short, home, reads;
+A: known, follow_up, long, work, skips;
+A: unknown, follow_up, short, work, skips;
+A: unknown, new, short, work, reads;
+A: known, follow_up, long, home, skips;
+A: known, new, long, work, skips;
+A: unknown, follow_up, short, home, skips;
+A: known, new, long, work, skips;
+A: known, follow_up, short, home, reads;
+A: known, new, short, work, reads;
+A: known, new, short, home, reads;
+A: known, follow_up, short, work, reads;
+A: known, new, short, home, reads;
+A: unknown, new, short, work, reads;
+
+B: known, follow_up, short, home, reads;
+B: unknown, follow_up, short, home, reads;
+B: known, new, short, home, skips;
+B: known, new, long, work, skips;
+B: known, new, long, work, skips;
+B: unknown, new, long, home, skips;
+B: unknown, follow_up, long, home, skips;
+B: known, follow_up, short, home, reads;
+B: unknown, follow_up, long, work, skips;
+B: unknown, new, short, home, skips;

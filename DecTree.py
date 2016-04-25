@@ -3,7 +3,6 @@ import argparse
 
 # TODO: Add docstrings
 # TODO: Proper comments
-# TODO: Consider making DecTree class
 target_attribute = ""
 instances = []
 attributes = []
